@@ -1,34 +1,35 @@
 import psycopg2
+import psycopg2.extras
 import json
+import logging
+from typing import Any, Dict, List
 from collections import defaultdict
 from datetime import datetime, UTC
 import config
 
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger(__name__)
+
 
 def get_conn():
-    c = config.DB
-    return psycopg2.connect(
-        host=c["host"],
-        port=c["port"],
-        dbname=c["dbname"],
-        user=c["user"],
-        password=c["password"]
-    )
+    try:
+        return psycopg2.connect(**config.DB)
+    except psycopg2.OperationalError as e:
+        logger.error(f"Database connection failed: {e}")
+        raise
 
 
-def fetch_rows(query, params=None):
+def fetch_rows(query: str, params: tuple = None) -> List[Dict[str, Any]]:
     conn = get_conn()
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(query, params or ())
-            cols = [desc[0] for desc in cur.description]
-            rows = [dict(zip(cols, row)) for row in cur.fetchall()]
-            return rows
+            return [dict(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
 
-def build_by_service():
+def build_by_service() -> Dict[str, List[Dict[str, Any]]]:
     """
     Group monthly cost per resource per service.
     Uses REAL column names:
@@ -79,7 +80,7 @@ def build_by_service():
     return services
 
 
-def fetch_top_cost_resources():
+def fetch_top_cost_resources() -> List[Dict[str, Any]]:
     query = "SELECT resource_id, monthly_cost FROM top_cost_resources ORDER BY monthly_cost DESC;"
     rows = fetch_rows(query)
     for r in rows:
@@ -99,7 +100,7 @@ def main():
     with open("cost_dashboard.json", "w") as f:
         json.dump(output, f, indent=2)
 
-    print("Wrote cost_dashboard.json successfully.")
+    logger.info("Wrote cost_dashboard.json successfully.")
 
 
 if __name__ == "__main__":
