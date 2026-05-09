@@ -117,7 +117,7 @@ def main():
     with open("cost_dashboard.json", "w") as f:
         json.dump(output, f, indent=2)
 
-    logger.info("Wrote cost_dashboard.json successfully.")
+    logger.info("✅ Wrote cost_dashboard.json successfully.")
 
 
 if __name__ == "__main__":
