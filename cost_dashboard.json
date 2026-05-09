@@ -1,0 +1,48 @@
+{
+  "submitted_by": "maheshs-1@mulearn",
+  "generated_at": "2025-12-10T19:37:59.381360+00:00",
+  "grouped_by": "service",
+  "services": {
+    "EC2": [
+      {
+        "resource_id": "i-123",
+        "total_cost": 32.6,
+        "monthly_breakdown": {
+          "2025-01": 10.5,
+          "2025-02": 22.1
+        }
+      }
+      {
+        "resource_id": "i-456",
+        "total_cost": 5.0,
+        "monthly_breakdown": {
+          "2025-01": 5.0
+        }
+      }
+    ],
+    "S3": [
+      {
+        "resource_id": "bucket-1",
+        "total_cost": 6.5,
+        "monthly_breakdown": {
+          "2025-01": 2.5,
+          "2025-02": 4.0
+        }
+      }
+    ]
+  },
+  "top_cost_resources": [
+    {
+      "resource_id": "i-123",
+      "monthly_cost": 32.6
+    },
+    {
+      "resource_id": "bucket-1",
+      "monthly_cost": 6.5
+    },
+    {
+      "resource_id": "i-456",
+      "monthly_cost": 5.0
+    }
+  ]
+}
