@@ -12,7 +12,16 @@ pip install psycopg2-binary
 ```
 
 ### Database Connection
-Ensure PostgreSQL is installed and running. Create a database for your AWS cost data.
+
+**Recommended: Using Docker**
+If you have Docker installed, you can spin up the database and required tables automatically by running:
+```bash
+docker-compose up -d
+```
+This will start a PostgreSQL server on port 5432 with the credentials already configured in `config.py` and populate it with mock data.
+
+**Manual Setup**
+If you prefer not to use Docker, ensure PostgreSQL is installed and running. Create a database for your AWS cost data.
 
 Update the connection parameters in `config.py`:
 
