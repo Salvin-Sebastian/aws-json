@@ -1,5 +1,4 @@
-import psycopg2
-import psycopg2.extras
+import sqlite3
 import json
 import logging
 from typing import Any, Dict, List
@@ -11,38 +10,54 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 
+def init_db():
+    """Initializes the SQLite database with tables and dummy data if it doesn't exist."""
+    conn = sqlite3.connect("awsdb.sqlite")
+    cur = conn.cursor()
+    
+    cur.execute("CREATE TABLE IF NOT EXISTS aws_resources (resource_id VARCHAR(100) PRIMARY KEY, service VARCHAR(50))")
+    cur.execute("CREATE TABLE IF NOT EXISTS aws_costs (id INTEGER PRIMARY KEY AUTOINCREMENT, resource_id VARCHAR(100), cost_date DATE, cost NUMERIC(10, 2))")
+    cur.execute("CREATE TABLE IF NOT EXISTS top_cost_resources (resource_id VARCHAR(100) PRIMARY KEY, monthly_cost NUMERIC(10, 2))")
+    
+    cur.execute("SELECT COUNT(*) FROM aws_resources")
+    if cur.fetchone()[0] == 0:
+        cur.executemany("INSERT INTO aws_resources (resource_id, service) VALUES (?, ?)", [
+            ('i-123', 'EC2'), ('i-456', 'EC2'), ('bucket-1', 'S3')
+        ])
+        cur.executemany("INSERT INTO aws_costs (resource_id, cost_date, cost) VALUES (?, ?, ?)", [
+            ('i-123', '2025-01-15', 10.50), ('i-123', '2025-02-15', 22.10),
+            ('i-456', '2025-01-20', 5.00), ('bucket-1', '2025-01-05', 2.50),
+            ('bucket-1', '2025-02-10', 4.00)
+        ])
+        cur.executemany("INSERT INTO top_cost_resources (resource_id, monthly_cost) VALUES (?, ?)", [
+            ('i-123', 32.60), ('bucket-1', 6.50), ('i-456', 5.00)
+        ])
+        conn.commit()
+    conn.close()
+
+
 def get_conn():
-    try:
-        return psycopg2.connect(**config.DB)
-    except psycopg2.OperationalError as e:
-        logger.error(f"Database connection failed: {e}")
-        raise
+    conn = sqlite3.connect("awsdb.sqlite")
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def fetch_rows(query: str, params: tuple = None) -> List[Dict[str, Any]]:
     conn = get_conn()
     try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(query, params or ())
-            return [dict(row) for row in cur.fetchall()]
+        cur = conn.cursor()
+        cur.execute(query, params or ())
+        return [dict(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
 
 def build_by_service() -> Dict[str, List[Dict[str, Any]]]:
-    """
-    Group monthly cost per resource per service.
-    Uses REAL column names:
-    - aws_costs.cost_date
-    - aws_costs.cost
-    - aws_resources.service
-    """
-
     q = """
     SELECT
       ar.resource_id,
       ar.service,
-      DATE_TRUNC('month', ac.cost_date)::date AS month,
+      strftime('%Y-%m', ac.cost_date) AS month,
       SUM(ac.cost) AS total_cost
     FROM aws_resources ar
     JOIN aws_costs ac ON ar.resource_id = ac.resource_id
@@ -58,7 +73,7 @@ def build_by_service() -> Dict[str, List[Dict[str, Any]]]:
     for r in rows:
         service = r["service"] or "unknown"
         resource = r["resource_id"]
-        month = r["month"].strftime("%Y-%m")
+        month = r["month"]
         cost = float(r["total_cost"])
 
         temp[service][resource]["total_cost"] += cost
@@ -89,6 +104,8 @@ def fetch_top_cost_resources() -> List[Dict[str, Any]]:
 
 
 def main():
+    init_db()  # Ensures the database and tables exist
+    
     output = {
         "submitted_by": config.SUBMITTER_MUID,
         "generated_at": datetime.now(UTC).isoformat(),
