@@ -3,7 +3,7 @@ DB = {
     "port": 5432,
     "dbname": "awsdb",
     "user": "postgres",
-    "password": "mahesh123"
+    "password": "salvin123"
 }
 
 SUBMITTER_MUID = "salvinsebastian@mulearn"
