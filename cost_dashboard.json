@@ -1,5 +1,5 @@
 {
-  "submitted_by": "maheshs-1@mulearn",
+  "submitted_by": "salvinsebastian@mulearn",
   "generated_at": "2025-12-10T19:37:59.381360+00:00",
   "grouped_by": "service",
   "services": {
@@ -11,7 +11,7 @@
           "2025-01": 10.5,
           "2025-02": 22.1
         }
-      }
+      },
       {
         "resource_id": "i-456",
         "total_cost": 5.0,

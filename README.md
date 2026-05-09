@@ -1,62 +1,81 @@
-# PostgreSQL Project
+# AWS Cost JSON Generator
 
-This project demonstrates the setup and usage of a PostgreSQL database with Python, including connection handling, dependency management, and basic API interactions.
+This project contains a Python script (`generate_cost_json.py`) that connects to a PostgreSQL database, queries AWS resource and cost data, and generates a formatted JSON report grouped by AWS service and top cost resources.
 
 ## Setup Instructions
 
 ### Dependencies
-Install the required Python packages using pip:
+Install the required Python packages using `pip`:
 
 ```bash
-pip install psycopg2-binary flask
+pip install psycopg2-binary
 ```
 
 ### Database Connection
-Ensure PostgreSQL is installed and running on your system. Create a database named `example_db`.
+Ensure PostgreSQL is installed and running. Create a database for your AWS cost data.
 
-Update the connection parameters in `config.py` or directly in your script:
+Update the connection parameters in `config.py`:
 
 ```python
-import psycopg2
-
-conn = psycopg2.connect(
-    host="localhost",
-    database="example_db",
-    user="your_username",
-    password="your_password"
-)
+# config.py
+DB = {
+    "host": "localhost",
+    "port": 5432,
+    "dbname": "your_db_name",
+    "user": "your_username",
+    "password": "your_password"
+}
+SUBMITTER_MUID = "salvinsebastian@mulearn"
 ```
 
 ### Required Tables
-Create the following table in your PostgreSQL database:
+Create the following tables in your PostgreSQL database:
 
 ```sql
-CREATE TABLE users (
+CREATE TABLE aws_resources (
+    resource_id VARCHAR(100) PRIMARY KEY,
+    service VARCHAR(50)
+);
+
+CREATE TABLE aws_costs (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    resource_id VARCHAR(100) REFERENCES aws_resources(resource_id),
+    cost_date DATE,
+    cost NUMERIC(10, 2)
+);
+
+-- Note: The script also queries a 'top_cost_resources' view or table
+CREATE TABLE top_cost_resources (
+    resource_id VARCHAR(100) PRIMARY KEY,
+    monthly_cost NUMERIC(10, 2)
 );
 ```
 
-## Example JSON Structure or API Response
+## Example JSON Structure
 
-When querying the database via a simple Flask API, the response might look like this:
+The output `cost_dashboard.json` will be formatted like this:
 
 ```json
 {
-  "users": [
+  "submitted_by": "salvinsebastian@mulearn",
+  "generated_at": "2025-12-10T19:37:59.381360+00:00",
+  "grouped_by": "service",
+  "services": {
+    "EC2": [
+      {
+        "resource_id": "i-123",
+        "total_cost": 32.6,
+        "monthly_breakdown": {
+          "2025-01": 10.5,
+          "2025-02": 22.1
+        }
+      }
+    ]
+  },
+  "top_cost_resources": [
     {
-      "id": 1,
-      "name": "John Doe",
-      "email": "john@example.com",
-      "created_at": "2023-10-01T12:00:00Z"
-    },
-    {
-      "id": 2,
-      "name": "Jane Smith",
-      "email": "jane@example.com",
-      "created_at": "2023-10-02T12:00:00Z"
+      "resource_id": "i-123",
+      "monthly_cost": 32.6
     }
   ]
 }
@@ -64,4 +83,7 @@ When querying the database via a simple Flask API, the response might look like 
 
 ## Explanation of Implementation
 
-The implementation uses `psycopg2` for PostgreSQL connectivity in Python.
+The implementation uses `psycopg2` with `RealDictCursor` to fetch data as Python dictionaries.
+- **`build_by_service()`**: Uses a `JOIN` between `aws_resources` and `aws_costs`, truncates dates to the month level using `DATE_TRUNC`, and aggregates costs. The Python logic then organizes this flat result set into a nested dictionary structure grouped by `service`, including total costs and a monthly breakdown.
+- **`fetch_top_cost_resources()`**: Fetches data from a pre-calculated table/view of top cost resources.
+- The results are packaged into a single dictionary and dumped to `cost_dashboard.json` with indentation for readability.

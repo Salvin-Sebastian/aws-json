@@ -6,4 +6,4 @@ DB = {
     "password": "mahesh123"
 }
 
-SUBMITTER_MUID = "maheshs-1@mulearn"
+SUBMITTER_MUID = "salvinsebastian@mulearn"
